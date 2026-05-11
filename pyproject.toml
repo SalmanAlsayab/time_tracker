@@ -1,7 +1,7 @@
 [project]
 name = "time-tracker"
 version = "0.1.0"
-description = "Add your description here"
+description = "An app that tracks time spent using a desktop application like, browsers, vscode, and etc"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

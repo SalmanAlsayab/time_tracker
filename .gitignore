@@ -5,6 +5,9 @@ build/
 dist/
 wheels/
 *.egg-info
-
+*.session
 # Virtual environments
 .venv
+
+# python files for dev use only
+test.py
