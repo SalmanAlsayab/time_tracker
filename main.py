@@ -1,24 +1,28 @@
-from pydantic import BaseModel
-from win32gui import GetForegroundWindow, GetWindowText
-import re
-import time
+from pydantic import BaseModel, Field
 from datetime import datetime
-class application(BaseModel):
-    def __init__(self, name:str):
-        self.name = name
-        self.timer_step:int = 2
-        self.timer:int = 0
-        
-        def increase_timer():
-            self.timer += self.timer_step
-            
-time.sleep(2)
-# Get the handle to the foreground window
+from win32gui import GetForegroundWindow, GetWindowText
+from uudi import uuid4
+
+class ApplicationSession(BaseModel):
+    # Define all fields here with type hints
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    handle: int
+    timer_step: int = 2
+    duration: int = 0
+    start_time: datetime = Field(default_factory=datetime.now)
+
+    def increase_duration(self):
+        self.duration += self.timer_step
+
+# Get the handle
 hwnd = GetForegroundWindow()
 
-# Get the text (title) of that window
-window_title = GetWindowText(hwnd)
-print(f"Active Window: {window_title.split('-')}")
-
-
-            
+if __name__ == "__main__":
+    # Pydantic handles the assignment automatically via keyword arguments
+    app = ApplicationSession(handle=hwnd)
+    
+    print(f"Handle: {app.handle}")
+    print(f"Start Time: {app.start_time}")
+    
+    app.increase_duration()
+    print(f"New Duration: {app.duration}")
