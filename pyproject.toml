@@ -1,10 +1,11 @@
 [project]
 name = "time-tracker"
 version = "0.1.0"
-description = "An app that tracks time spent using a desktop application like, browsers, vscode, and etc"
+description = "An app that tracks time spent using desktop applications like, browsers, vscode, etc"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "nicegui>=3.11.1",
     "pydantic>=2.13.4",
     "pywin32>=311",
     "uuid>=1.30",
