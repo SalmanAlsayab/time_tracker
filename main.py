@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
-from db_handeler import insert_into_table, update_values
+from db_handeler import insert_into_table, update_values, create_table
 
 class ApplicationSession(BaseModel):
     # Define all fields here with type hints
@@ -33,16 +33,16 @@ def prepear_insert(session:ApplicationSession) -> dict:
     db_input['end_time'] = datetime.time(date_time).strftime(r"%H:%M")
 
     db_input['date'] = datetime.date(session.start_datetime).strftime(r"%d/%m/%Y")
-    db_input['duration'] = str(timedelta(seconds=session.duration))
+    db_input['duration'] = session.duration
     print(f"prepeared data to be inserted: {db_input}")
     return db_input
 
-def prepear_update(session:ApplicationSession):
+def prepear_update(session:ApplicationSession) -> tuple:
     date_time = datetime.now()
     end_time = datetime.time(date_time).strftime(r'%H:%M')
-    duration = str(timedelta(seconds=session.duration))
+    duration = session.duration
     data = (end_time, duration, session.id)
-    print(f'prepeared data to be updated: {data}')
+    # print(f'prepeared data to be updated: {data}')
     return data
 
 
@@ -50,14 +50,15 @@ def prepear_update(session:ApplicationSession):
 def main():
     hwnd = GetForegroundWindow()
     app_seesion = ApplicationSession(handle=hwnd)
-
+    create_table()
     while True:
-        # sleep for 2 sconds to not overwhelm the cpu
+        # sleep for 2 sconds to not overwhelm disk I/O
         sleep(2)
         hwnd = GetForegroundWindow()
         if app_seesion.handle == hwnd:
             app_seesion.increase_duration()
-            if app_seesion.duration == 2:
+            # if the session is newly created insert its data into the database
+            if app_seesion.duration == app_seesion.timer_step:
                 insert_data = prepear_insert(app_seesion)
                 insert_into_table(insert_data)
             else:
@@ -69,4 +70,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"the following error occurred: {e}")
