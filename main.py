@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
+from datetime import datetime
 from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
@@ -22,7 +22,15 @@ def prepear_insert(session:ApplicationSession) -> dict:
     window_text = GetWindowText(session.handle).split(' - ')
     date_time = datetime.now()
     db_input['id'] = session.id
-    db_input['name'] = window_text[-1]
+    if 'Visual Studio Code' in window_text:
+        db_input['name'] = "VSCode" 
+    elif "YouTube" in window_text[-1]:
+        db_input['name'] = "YouTube"
+    elif "Firefox" in window_text[-1]:
+        db_input['name'] = 'Firefox'
+    else:
+        db_input['name'] = window_text[-1]
+                
     try:
         db_input['window_title'] = window_text[-2]
     except IndexError as e:
