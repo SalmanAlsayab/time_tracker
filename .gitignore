@@ -11,6 +11,7 @@ wheels/
 
 # python files for dev use only
 test.py
+test2.py
 
 database
 *.db
