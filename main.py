@@ -57,23 +57,41 @@ def prepear_update(session:ApplicationSession) -> tuple:
 
 def main():
     hwnd = GetForegroundWindow()
-    app_seesion = ApplicationSession(handle=hwnd)
+    current_session = ApplicationSession(handle=hwnd)
+    next_handel = current_session.handle
+    next_session = ApplicationSession(handle=0)
+    strikes:int = 0
     create_table()
     while True:
         # sleep for 2 sconds to not overwhelm disk I/O
         sleep(2)
         hwnd = GetForegroundWindow()
-        if app_seesion.handle == hwnd:
-            app_seesion.increase_duration()
+        if current_session.handle == next_session.handle or strikes>10:
+            strikes = 0
+            next_session = ApplicationSession(handle=0)
+        if current_session.handle == hwnd:
+            current_session.increase_duration()
             # if the session is newly created insert its data into the database
-            if app_seesion.duration == app_seesion.timer_step:
-                insert_data = prepear_insert(app_seesion)
+            if current_session.handle == next_handel:
+                insert_data = prepear_insert(current_session)
                 insert_into_table(insert_data)
+                next_handel=0
             else:
-                update_data = prepear_update(app_seesion)
+                update_data = prepear_update(current_session)
                 update_values(update_data)
         else:
-            app_seesion = ApplicationSession(handle=hwnd)
+            if strikes == 0:
+                next_session = ApplicationSession(handle=hwnd)
+                next_handel = next_session.handle
+            elif strikes == 10 and (next_session.handle == hwnd):
+                current_session = next_session
+            elif strikes >= 10 and (next_session.handle != hwnd):
+                current_session = ApplicationSession(handle=hwnd)
+                next_handel = current_session.handle
+
+            next_session.increase_duration()
+            current_session.increase_duration()
+            strikes+=1
 
 
 

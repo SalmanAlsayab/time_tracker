@@ -38,7 +38,7 @@ def update_values(values:tuple):
 def totalTime_in_application(numberOfRows:int = -1) -> list:
     with get_connection() as con:
         cur = con.cursor()
-        cur.execute("""SELECT name, printf("%.2f hrs", (SUM(duration) / 3600.0)) AS total_duration
+        cur.execute("""SELECT name, (SUM(duration) / 3600.0) AS total_duration
         FROM durationDB
         WHERE name <> ''
         GROUP BY name
@@ -52,12 +52,20 @@ def totalTime_in_application(numberOfRows:int = -1) -> list:
 def app_history(app_name: str):
     with get_connection() as con:
         cur = con.cursor()
-        cur.execute(""" SELECT date, start_time, end_time, duration 
+        cur.execute(""" SELECT id, date, start_time, end_time, duration 
                         FROM durationDB
                         WHERE name = ? 
                         ORDER BY date DESC, start_time DESC""", (app_name,))
     return cur.fetchall()
 
+def user_history():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute(""" SELECT id, name, start_time, end_time, date, duration 
+                    FROM durationDB
+                    WHERE name <> ''
+                    ORDER BY date DESC, start_time DESC""")
+    return cur.fetchall()
 if __name__=="__main__":
     # create_table()
     pass
