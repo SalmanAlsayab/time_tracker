@@ -3,8 +3,7 @@ from datetime import datetime
 from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
-from db_handeler import insert_into_table, update_values, create_table
-
+from db_handeler import insert_into_table, update_values, create_table, delete_duplicates
 class ApplicationSession(BaseModel):
     # Define all fields here with type hints
     id: str = Field(default_factory=lambda: uuid4().hex)
@@ -40,7 +39,7 @@ def prepear_insert(session:ApplicationSession) -> dict:
     db_input['start_time'] = datetime.time(session.start_datetime).strftime(r"%H:%M")    
     db_input['end_time'] = datetime.time(date_time).strftime(r"%H:%M")
 
-    db_input['date'] = datetime.date(session.start_datetime).strftime(r"%d/%m/%Y")
+    db_input['date'] = datetime.date(session.start_datetime).strftime(r"%Y-%m-%d")
     db_input['duration'] = session.duration
     print(f"prepeared data to be inserted: {db_input}")
     return db_input
@@ -61,10 +60,12 @@ def main():
     next_handel = current_session.handle
     next_session = ApplicationSession(handle=0)
     strikes:int = 0
+    check_duplicates_timer:int = 0
     create_table()
     while True:
         # sleep for 2 sconds to not overwhelm disk I/O
         sleep(2)
+        check_duplicates_timer +=2
         hwnd = GetForegroundWindow()
         if current_session.handle == next_session.handle or strikes>10:
             strikes = 0
@@ -73,12 +74,14 @@ def main():
             current_session.increase_duration()
             # if the session is newly created insert its data into the database
             if current_session.handle == next_handel:
-                insert_data = prepear_insert(current_session)
-                insert_into_table(insert_data)
-                next_handel=0
-            else:
-                update_data = prepear_update(current_session)
-                update_values(update_data)
+                try:
+                    insert_data = prepear_insert(current_session)
+                    insert_into_table(insert_data)
+                    next_handel=0
+                except Exception as e:
+                    print(f"the following error occured: {e}")
+            update_data = prepear_update(current_session)
+            update_values(update_data)
         else:
             if strikes == 0:
                 next_session = ApplicationSession(handle=hwnd)
@@ -88,10 +91,13 @@ def main():
             elif strikes >= 10 and (next_session.handle != hwnd):
                 current_session = ApplicationSession(handle=hwnd)
                 next_handel = current_session.handle
-
             next_session.increase_duration()
-            current_session.increase_duration()
+            # current_session.increase_duration()
             strikes+=1
+
+        if check_duplicates_timer == 60:
+            delete_duplicates()
+            check_duplicates_timer = 0
 
 
 
