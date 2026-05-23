@@ -15,5 +15,5 @@ test2.py
 
 database
 *.db
-.db-wal
-.db-shm
+*.db-wal
+*.db-shm
