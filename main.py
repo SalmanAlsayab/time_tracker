@@ -4,6 +4,11 @@ from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
 from db_handeler import insert_into_table, update_values, create_table
+from win32process import GetWindowThreadProcessId
+import psutil
+from pathlib import Path
+import win32gui
+import win32ui
 
 class ApplicationSession(BaseModel):
     # Define all fields here with type hints
@@ -17,20 +22,52 @@ class ApplicationSession(BaseModel):
         self.duration += self.timer_step
         
 
+def find_exe_path(handle:int):
+    thread_id, pid = GetWindowThreadProcessId(handle)
+    process = psutil.Process(pid)
+    exe_path = process.exe()
+    return exe_path
+
+
+def save_first_icon(exe_path, output_path):
+    # Extract icons
+    large_icons, small_icons = win32gui.ExtractIconEx(exe_path, 0)
+    
+    if not large_icons:
+        return
+
+    icon_handle = large_icons[0]
+    
+    # Create device context to draw and save the icon
+    hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+    hbmp = win32ui.CreateBitmap()
+    # Assuming standard 32x32 icon size, 
+    # use win32api.GetSystemMetrics for dynamic sizing
+    hbmp.CreateCompatibleBitmap(hdc, 32, 32) 
+    
+    mem_dc = hdc.CreateCompatibleDC()
+    mem_dc.SelectObject(hbmp)
+    mem_dc.DrawIcon((0, 0), icon_handle)
+    
+    hbmp.SaveBitmapFile(mem_dc, output_path)
+    
+    # Cleanup
+    win32gui.DestroyIcon(icon_handle)
+
+
 def prepear_insert(session:ApplicationSession) -> dict:
+    save_icon = True
     db_input = {}
     window_text = GetWindowText(session.handle).split(' - ')
     date_time = datetime.now()
     db_input['id'] = session.id
-    if 'Visual Studio Code' in window_text:
-        db_input['name'] = "VSCode" 
-    elif "YouTube" in window_text[-1]:
-        db_input['name'] = "YouTube"
-    elif "Firefox" in window_text[-1]:
-        db_input['name'] = 'Firefox'
-    else:
-        db_input['name'] = window_text[-1]
-                
+    exe_path = find_exe_path(handle=session.handle)
+    db_input['name'] = exe_path.split('\\')[-1]
+    for icon in Path('/icons').iterdir():
+        if f'{db_input['name']}.bmp' == icon:
+            save_icon = False
+    if save_icon:
+        save_first_icon(exe_path, f'icons/{db_input['name']}.bmp')
     try:
         db_input['window_title'] = window_text[-2]
     except IndexError as e:
