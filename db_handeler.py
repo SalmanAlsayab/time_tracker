@@ -66,6 +66,50 @@ def user_history():
                     WHERE name <> ''
                     ORDER BY date DESC, start_time DESC""")
     return cur.fetchall()
+
+def delete_duplicates():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute("""DELETE FROM durationDB
+                WHERE rowid NOT IN (
+                    SELECT MIN(rowid)
+                    FROM durationDB
+                    GROUP BY name, date, start_time, end_time, duration
+);""")
+        
+def top5_daily():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute("""SELECT name, (SUM(duration) / 3600.0) AS total_duration
+                    FROM durationDB
+                    WHERE name <> '' AND date = DATE('now')
+                    GROUP BY name
+                    ORDER BY total_duration DESC""")
+        return cur.fetchmany(5)
+    
+def top5_weekly():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute("""SELECT name, (SUM(duration) / 3600.0) AS total_duration
+                    FROM durationDB
+                    WHERE name <> '' AND date BETWEEN DATE('now', 'weekday 0', '-7 days') 
+                    AND DATE('now', 'weekday 0', '-1 days') 
+                    GROUP BY name
+                    ORDER BY total_duration DESC""")
+        return cur.fetchmany(5)
+    
+def clean_date():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute("""UPDATE durationDB 
+                    SET date = SUBSTR(date, 7, 4) || '-' || SUBSTR(date, 4, 2) || '-' ||SUBSTR(date, 1, 2)""")
+        
+def clean():
+    with get_connection() as con:
+        cur = con.cursor()
+        cur.execute("""UPDATE durationDB
+                    SET name = 'Code.exe' 
+                    WHERE name = 'code.exe'""")
 if __name__=="__main__":
-    # create_table()
+    # clean()
     pass
