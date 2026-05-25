@@ -111,5 +111,5 @@ def clean():
                     SET name = 'Code.exe' 
                     WHERE name = 'code.exe'""")
 if __name__=="__main__":
-    # clean()
+    # clean()       
     pass
