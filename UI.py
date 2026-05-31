@@ -14,8 +14,10 @@ def abbreviate(app_name:str):
     if len(words) > 2:
         new_name = ''
         for word in words:
-            new_name+= word[0]
+            new_name+= word[0].upper()
         return new_name
+    elif len(app_name) > 15:
+        return app_name[:11]
     else:
         app_name = re.sub('.exe', '', app_name)
     return app_name
@@ -31,7 +33,7 @@ def render_buttons(query_output:list):
     for key in rows.keys():
         with ui.button(on_click=lambda key=key: ui.navigate.to(f'/app_page/{key}')).classes("flex w-65 h-15 bg-skyblue px-8 py-6 rounded-3xl shadow-xl/30 opacity-80"):
             with ui.grid(columns="1px auto auto").classes("pb-8"):
-                ui.icon(f'img:static/{key}.bmp')
+                ui.icon(f'img:static/{key}.bmp').classes("bg-red-100")
                 ui.label(f"{abbreviate(app_name=key)}").classes("absolute left-10 right-auto text-white")                        
                 ui.label(f'{rows[key]:.2f} hrs').classes(" w-30 pl-10 text-white")
 
@@ -128,8 +130,6 @@ app.native.window_args['resizable'] = False
 def start_backend():
     main()
 
-Thread(target=start_backend, daemon=True).start()
+Thread(target=start_backend, daemon=False).start()
 
 ui.run(native=True, window_size=(340, 560), fullscreen=False)
-
-
