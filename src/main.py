@@ -3,12 +3,18 @@ from datetime import datetime
 from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
-from db_handeler import insert_into_table, update_values, create_table, delete_duplicates
+from .db_handeler import (
+    insert_into_table,
+    update_values,
+    create_table,
+    delete_duplicates,
+)
 from win32process import GetWindowThreadProcessId
 import psutil
 from pathlib import Path
 import win32gui
 import win32ui
+
 
 class ApplicationSession(BaseModel):
     # Define all fields here with type hints
@@ -20,9 +26,9 @@ class ApplicationSession(BaseModel):
 
     def increase_duration(self):
         self.duration += self.timer_step
-        
 
-def find_exe_path(handle:int):
+
+def find_exe_path(handle: int):
     thread_id, pid = GetWindowThreadProcessId(handle)
     process = psutil.Process(pid)
     exe_path = process.exe()
@@ -32,65 +38,64 @@ def find_exe_path(handle:int):
 def save_first_icon(exe_path, output_path):
     # Extract icons
     large_icons, small_icons = win32gui.ExtractIconEx(exe_path, 0)
-    
+
     if not large_icons:
         return
 
     icon_handle = large_icons[0]
-    
+
     # Create device context to draw and save the icon
     hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
     hbmp = win32ui.CreateBitmap()
-    # Assuming standard 32x32 icon size, 
+    # Assuming standard 32x32 icon size,
     # use win32api.GetSystemMetrics for dynamic sizing
-    hbmp.CreateCompatibleBitmap(hdc, 32, 32) 
-    
+    hbmp.CreateCompatibleBitmap(hdc, 32, 32)
+
     mem_dc = hdc.CreateCompatibleDC()
     mem_dc.SelectObject(hbmp)
     mem_dc.DrawIcon((0, 0), icon_handle)
-    
+
     hbmp.SaveBitmapFile(mem_dc, output_path)
-    
+
     # Cleanup
     win32gui.DestroyIcon(icon_handle)
 
 
-
-def prepear_insert(session:ApplicationSession) -> dict:
+def prepear_insert(session: ApplicationSession) -> dict:
     save_icon = True
     db_input = {}
-    window_text = GetWindowText(session.handle).split(' - ')
+    window_text = GetWindowText(session.handle).split(" - ")
     date_time = datetime.now()
-    db_input['id'] = session.id
+    db_input["id"] = session.id
     exe_path = find_exe_path(handle=session.handle)
-    db_input['name'] = exe_path.split('\\')[-1]
-    for icon in Path('icons').iterdir():
-        if f'{db_input['name']}.bmp' == icon:
+    db_input["name"] = exe_path.split("\\")[-1]
+    for icon in Path("icons").iterdir():
+        if f"{db_input['name']}.bmp" == icon:
             save_icon = False
     if save_icon:
-        save_first_icon(exe_path, f'icons/{db_input['name']}.bmp')
+        save_first_icon(exe_path, f"icons/{db_input['name']}.bmp")
     try:
-        db_input['window_title'] = window_text[-2]
+        db_input["window_title"] = window_text[-2]
     except IndexError as e:
         print(f"the following error occurred: {e}")
-        db_input['window_title'] = None
-        
-    db_input['start_time'] = datetime.time(session.start_datetime).strftime(r"%H:%M")    
-    db_input['end_time'] = datetime.time(date_time).strftime(r"%H:%M")
+        db_input["window_title"] = None
 
-    db_input['date'] = datetime.date(session.start_datetime).strftime(r"%Y-%m-%d")
-    db_input['duration'] = session.duration
+    db_input["start_time"] = datetime.time(session.start_datetime).strftime(r"%H:%M")
+    db_input["end_time"] = datetime.time(date_time).strftime(r"%H:%M")
+
+    db_input["date"] = datetime.date(session.start_datetime).strftime(r"%Y-%m-%d")
+    db_input["duration"] = session.duration
     print(f"prepeared data to be inserted: {db_input}")
     return db_input
 
-def prepear_update(session:ApplicationSession) -> tuple:
+
+def prepear_update(session: ApplicationSession) -> tuple:
     date_time = datetime.now()
-    end_time = datetime.time(date_time).strftime(r'%H:%M')
+    end_time = datetime.time(date_time).strftime(r"%H:%M")
     duration = session.duration
     data = (end_time, duration, session.id)
     # print(f'prepeared data to be updated: {data}')
     return data
-
 
 
 def main():
@@ -98,15 +103,15 @@ def main():
     current_session = ApplicationSession(handle=hwnd)
     next_handel = current_session.handle
     next_session = ApplicationSession(handle=0)
-    strikes:int = 0
-    check_duplicates_timer:int = 0
+    strikes: int = 0
+    check_duplicates_timer: int = 0
     create_table()
     while True:
         # sleep for 2 sconds to not overwhelm disk I/O
         sleep(2)
-        check_duplicates_timer +=2
+        check_duplicates_timer += 2
         hwnd = GetForegroundWindow()
-        if current_session.handle == next_session.handle or strikes>10:
+        if current_session.handle == next_session.handle or strikes > 10:
             strikes = 0
             next_session = ApplicationSession(handle=0)
         if current_session.handle == hwnd:
@@ -116,7 +121,7 @@ def main():
                 try:
                     insert_data = prepear_insert(current_session)
                     insert_into_table(insert_data)
-                    next_handel=0
+                    next_handel = 0
                 except Exception as e:
                     print(f"the following error occured: {e}")
             update_data = prepear_update(current_session)
@@ -132,12 +137,11 @@ def main():
                 next_handel = current_session.handle
             next_session.increase_duration()
             # current_session.increase_duration()
-            strikes+=1
+            strikes += 1
 
         if check_duplicates_timer == 60:
             delete_duplicates()
             check_duplicates_timer = 0
-
 
 
 if __name__ == "__main__":
