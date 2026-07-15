@@ -5,10 +5,9 @@ description = "An app that tracks time spent using desktop applications like, br
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "nicegui>=3.11.1",
     "psutil>=7.2.2",
     "pydantic>=2.13.4",
-    "pywebview>=6.2.1",
     "pywin32>=311",
+    "typer>=0.26.8",
     "uuid>=1.30",
 ]

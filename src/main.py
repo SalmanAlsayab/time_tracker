@@ -1,13 +1,13 @@
 from pydantic import BaseModel, Field
+import math
 from datetime import datetime
 from win32gui import GetForegroundWindow, GetWindowText
 from uuid import uuid4
 from time import sleep
-from .db_handeler import (
+from db_handeler import (
     insert_into_table,
     update_values,
     create_table,
-    delete_duplicates,
 )
 from win32process import GetWindowThreadProcessId
 import psutil
@@ -23,14 +23,16 @@ class ApplicationSession(BaseModel):
     timer_step: int = 2
     duration: int = 0
     start_datetime: datetime = Field(default_factory=datetime.now)
+    inserted: bool = False
 
     def increase_duration(self):
         self.duration += self.timer_step
 
 
 def find_exe_path(handle: int):
+    print(f"current handle = {handle}")
     thread_id, pid = GetWindowThreadProcessId(handle)
-    process = psutil.Process(pid)
+    process = psutil.Process(abs(pid))
     exe_path = process.exe()
     return exe_path
 
@@ -62,6 +64,7 @@ def save_first_icon(exe_path, output_path):
 
 
 def prepear_insert(session: ApplicationSession) -> dict:
+
     save_icon = True
     db_input = {}
     window_text = GetWindowText(session.handle).split(" - ")
@@ -69,11 +72,19 @@ def prepear_insert(session: ApplicationSession) -> dict:
     db_input["id"] = session.id
     exe_path = find_exe_path(handle=session.handle)
     db_input["name"] = exe_path.split("\\")[-1]
-    for icon in Path("icons").iterdir():
+    try:
+        base_dir = Path(__file__).resolve().parent.parent
+        icons_dir = base_dir / "icons"
+        icons_dir.mkdir(exist_ok=True)
+    except FileNotFoundError:
+        raise FileNotFoundError("encountered issues in icons directory")
+    except Exception:
+        raise Exception("encountered an unexpected error")
+    for icon in icons_dir.iterdir():
         if f"{db_input['name']}.bmp" == icon:
             save_icon = False
     if save_icon:
-        save_first_icon(exe_path, f"icons/{db_input['name']}.bmp")
+        save_first_icon(exe_path, f"{icons_dir / db_input['name']}.bmp")
     try:
         db_input["window_title"] = window_text[-2]
     except IndexError as e:
@@ -90,6 +101,7 @@ def prepear_insert(session: ApplicationSession) -> dict:
 
 
 def prepear_update(session: ApplicationSession) -> tuple:
+
     date_time = datetime.now()
     end_time = datetime.time(date_time).strftime(r"%H:%M")
     duration = session.duration
@@ -99,53 +111,46 @@ def prepear_update(session: ApplicationSession) -> tuple:
 
 
 def main():
+    """main module that handles application tracking logic"""
     hwnd = GetForegroundWindow()
     current_session = ApplicationSession(handle=hwnd)
-    next_handel = current_session.handle
     next_session = ApplicationSession(handle=0)
     strikes: int = 0
-    check_duplicates_timer: int = 0
+    # check_duplicates_timer: int = 0
     create_table()
     while True:
-        # sleep for 2 sconds to not overwhelm disk I/O
-        sleep(2)
-        check_duplicates_timer += 2
-        hwnd = GetForegroundWindow()
-        if current_session.handle == next_session.handle or strikes > 10:
-            strikes = 0
+        sleep(current_session.timer_step)
+        # 1 strike = 2 seconds of not using app saved in current session
+        if strikes == 10:
+            current_session = next_session
             next_session = ApplicationSession(handle=0)
-        if current_session.handle == hwnd:
+            strikes = 0
+        # make sure current session data is inserted and only once
+        if not current_session.inserted:
             current_session.increase_duration()
-            # if the session is newly created insert its data into the database
-            if current_session.handle == next_handel:
-                try:
-                    insert_data = prepear_insert(current_session)
-                    insert_into_table(insert_data)
-                    next_handel = 0
-                except Exception as e:
-                    print(f"the following error occured: {e}")
+            insert_data = prepear_insert(current_session)
+            insert_into_table(insert_data)
+            current_session.inserted = True
+
+        if current_session.handle != hwnd:
+            current_next_handle = next_session.handle
+            if current_next_handle == 0:
+                next_session.handle = hwnd
+                next_session.increase_duration()
+                strikes += 1
+            elif current_next_handle == hwnd:
+                next_session.increase_duration()
+                strikes += 1
+            else:
+                current_session = next_session
+                next_session = ApplicationSession(handle=hwnd)
+        else:
+            current_session.increase_duration()
             update_data = prepear_update(current_session)
             update_values(update_data)
-        else:
-            if strikes == 0:
-                next_session = ApplicationSession(handle=hwnd)
-                next_handel = next_session.handle
-            elif strikes == 10 and (next_session.handle == hwnd):
-                current_session = next_session
-            elif strikes >= 10 and (next_session.handle != hwnd):
-                current_session = ApplicationSession(handle=hwnd)
-                next_handel = current_session.handle
-            next_session.increase_duration()
-            # current_session.increase_duration()
-            strikes += 1
-
-        if check_duplicates_timer == 60:
-            delete_duplicates()
-            check_duplicates_timer = 0
+            strikes = 0
+        hwnd = GetForegroundWindow()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"the following error occurred: {e}")
+    main()

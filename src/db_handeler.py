@@ -1,8 +1,12 @@
 import sqlite3
+from pathlib import Path
 
 
 def get_connection():
-    con = sqlite3.connect("/database/applications_time.db")
+    db_dir = Path(__file__).resolve().parent.parent / "database"
+    db_dir.mkdir(exist_ok=True)
+    db_path = db_dir / "applications_time.db"
+    con = sqlite3.connect(db_path)
     con.execute("PRAGMA journal_mode=WAL;")
     con.row_factory = sqlite3.Row
     return con
@@ -132,5 +136,5 @@ def clean():
 
 
 if __name__ == "__main__":
-    # clean()
+    clean()
     pass
