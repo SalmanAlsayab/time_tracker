@@ -5,6 +5,7 @@ description = "An app that tracks time spent using desktop applications like, br
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "loguru>=0.7.3",
     "psutil>=7.2.2",
     "pydantic>=2.13.4",
     "pytest>=9.1.1",
