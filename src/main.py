@@ -14,6 +14,33 @@ import psutil
 from pathlib import Path
 import win32gui
 import win32ui
+import sys
+from loguru import logger
+
+try:
+    base_dir = Path(__file__).resolve().parent.parent
+    icons_dir = base_dir / "icons"
+    icons_dir.mkdir(exist_ok=True)
+except FileNotFoundError:
+    logger.debug("encountered issues in icons directory", level="ERROR")
+except Exception:
+    logger.debug("encountered an unexpected error", level="ERROR")
+
+
+logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
+logger.add(
+    base_dir / "logs" / "info.log",
+    format="{time} {level} {message}",
+    level="INFO",
+    rotation="10 MB",
+)
+logger.add(
+    base_dir / "logs" / "debug.log",
+    format="{time} {level} {message}",
+    level="DEBUG",
+    rotation="1 MB",
+    filter=lambda record: record["level"].name == "DEBUG",
+)
 
 
 class ApplicationSession(BaseModel):
@@ -30,18 +57,8 @@ class ApplicationSession(BaseModel):
         self.duration += self.timer_step
 
 
-try:
-    base_dir = Path(__file__).resolve().parent.parent
-    icons_dir = base_dir / "icons"
-    icons_dir.mkdir(exist_ok=True)
-except FileNotFoundError:
-    raise FileNotFoundError("encountered issues in icons directory")
-except Exception:
-    raise Exception("encountered an unexpected error")
-
-
 def find_exe_path(handle: int):
-    print(f"current handle = {handle}")
+    logger.info(f"current handle = {handle}")
     thread_id, pid = GetWindowThreadProcessId(handle)
     process = psutil.Process(abs(pid))
     exe_path = process.exe()
@@ -92,7 +109,7 @@ def prepear_insert(session: ApplicationSession) -> dict:
     try:
         db_input["window_title"] = window_text[-2]
     except IndexError as e:
-        print(f"the following error occurred: {e}")
+        logger.debug(f"the following error occurred: {e}")
         db_input["window_title"] = None
 
     db_input["start_time"] = datetime.time(session.start_datetime).strftime(r"%H:%M")
@@ -100,7 +117,7 @@ def prepear_insert(session: ApplicationSession) -> dict:
 
     db_input["date"] = datetime.date(session.start_datetime).strftime(r"%Y-%m-%d")
     db_input["duration"] = session.duration
-    print(f"prepeared data to be inserted: {db_input}")
+    logger.info(f"prepeared data to be inserted: {db_input}")
     return db_input
 
 
@@ -110,7 +127,7 @@ def prepear_update(session: ApplicationSession) -> tuple:
     end_time = datetime.time(date_time).strftime(r"%H:%M")
     duration = session.duration
     data = (end_time, duration, session.id)
-    # print(f'prepeared data to be updated: {data}')
+    # logger.info(f"prepeared data to be updated: {data}")
     return data
 
 
@@ -139,12 +156,11 @@ def main():
                 current_session.inserted = True
 
             if current_session.handle != hwnd:
-                current_next_handle = next_session.handle
                 next_session.increase_duration()
-                if current_next_handle == 0:
+                if next_session.handle == 0:
                     next_session.handle = hwnd
                     strikes += 1
-                elif current_next_handle == hwnd:
+                elif next_session.handle == hwnd:
                     strikes += 1
                 else:
                     current_session = next_session.model_copy()
@@ -156,7 +172,7 @@ def main():
                 update_values(update_data)
                 strikes = 0
         except psutil.NoSuchProcess as e:
-            print(e)
+            logger.debug(f"Process not found: {e}", level="ERROR")
             current_session = ApplicationSession(handle=hwnd)
             next_session = ApplicationSession(handle=0)
 
