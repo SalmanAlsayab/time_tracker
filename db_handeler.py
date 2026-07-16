@@ -108,8 +108,8 @@ def clean():
     with get_connection() as con:
         cur = con.cursor()
         cur.execute("""UPDATE durationDB
-                    SET name = 'Code.exe' 
-                    WHERE name = 'code.exe'""")
+                    SET window_title = NULL 
+                    WHERE window_title = ''""")
 if __name__=="__main__":
     # clean()       
     pass
