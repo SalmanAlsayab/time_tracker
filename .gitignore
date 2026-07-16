@@ -11,9 +11,9 @@ icons/
 .venv
 
 # python files for dev use only
-test/
 src/UI.py
 database/
 *.db
 *.db-wal
 *.db-shm
+test.py
