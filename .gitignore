@@ -4,17 +4,16 @@ __pycache__/
 build/
 dist/
 wheels/
-/icons
+icons/
 *.egg-info
 *.session
 # Virtual environments
 .venv
 
 # python files for dev use only
-test.py
-test2.py
-
-database
+src/UI.py
+database/
 *.db
 *.db-wal
 *.db-shm
+test.py

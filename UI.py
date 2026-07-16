@@ -132,4 +132,4 @@ def start_backend():
 
 Thread(target=start_backend, daemon=False).start()
 
-ui.run(native=True, window_size=(340, 560), fullscreen=False)
+ui.run(native=True, window_size=(340, 560), fullscreen=False)l
