@@ -6,6 +6,7 @@ dist/
 wheels/
 icons/
 logs/
+
 *.egg-info
 *.session
 # Virtual environments

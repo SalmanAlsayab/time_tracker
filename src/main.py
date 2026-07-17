@@ -22,9 +22,9 @@ try:
     icons_dir = base_dir / "icons"
     icons_dir.mkdir(exist_ok=True)
 except FileNotFoundError:
-    logger.debug("encountered issues in icons directory", level="ERROR")
+    logger.error("encountered issues in icons directory", level="ERROR")
 except Exception:
-    logger.debug("encountered an unexpected error", level="ERROR")
+    logger.error("encountered an unexpected error", level="ERROR")
 
 
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
@@ -37,9 +37,9 @@ logger.add(
 logger.add(
     base_dir / "logs" / "debug.log",
     format="{time} {level} {message}",
-    level="DEBUG",
+    level="ERROR",
     rotation="1 MB",
-    filter=lambda record: record["level"].name == "DEBUG",
+    filter=lambda record: record["level"].name == "ERROR",
 )
 
 
@@ -109,7 +109,7 @@ def prepear_insert(session: ApplicationSession) -> dict:
     try:
         db_input["window_title"] = window_text[-2]
     except IndexError as e:
-        logger.debug(f"the following error occurred: {e}")
+        logger.error(f"the following error occurred: {e}", level="ERROR")
         db_input["window_title"] = None
 
     db_input["start_time"] = datetime.time(session.start_datetime).strftime(r"%H:%M")
