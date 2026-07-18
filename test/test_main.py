@@ -82,3 +82,13 @@ def test_find_exe_path(handle):
     thread_id, pid = GetWindowThreadProcessId(handle)
     process = psutil.Process(abs(pid))
     exe_path = process.exe()
+
+
+def test_cli_import_initializes_file_logging():
+    from loguru import logger
+    import importlib
+
+    logger.remove()
+    importlib.import_module("src.cli")
+
+    assert logger._core.handlers

@@ -14,33 +14,24 @@ import psutil
 from pathlib import Path
 import win32gui
 import win32ui
-import sys
 from loguru import logger
+
+try:
+    from .log_manager import setup_logging
+except ImportError:
+    from log_manager import setup_logging
+
+setup_logging()
+
 
 try:
     base_dir = Path(__file__).resolve().parent.parent
     icons_dir = base_dir / "icons"
     icons_dir.mkdir(exist_ok=True)
 except FileNotFoundError:
-    logger.error("encountered issues in icons directory", level="ERROR")
-except Exception:
-    logger.error("encountered an unexpected error", level="ERROR")
-
-
-logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
-logger.add(
-    base_dir / "logs" / "info.log",
-    format="{time} {level} {message}",
-    level="INFO",
-    rotation="10 MB",
-)
-logger.add(
-    base_dir / "logs" / "debug.log",
-    format="{time} {level} {message}",
-    level="ERROR",
-    rotation="1 MB",
-    filter=lambda record: record["level"].name == "ERROR",
-)
+    logger.warning("icons directory does not exist")
+except Exception as e:
+    logger.warning(f"encountered an unexpected error {e}")
 
 
 class ApplicationSession(BaseModel):
@@ -108,8 +99,7 @@ def prepear_insert(session: ApplicationSession) -> dict:
         save_first_icon(exe_path, f"{icons_dir / db_input['name']}.bmp")
     try:
         db_input["window_title"] = window_text[-2]
-    except IndexError as e:
-        logger.error(f"the following error occurred: {e}", level="ERROR")
+    except IndexError:
         db_input["window_title"] = None
 
     db_input["start_time"] = datetime.time(session.start_datetime).strftime(r"%H:%M")
@@ -127,7 +117,7 @@ def prepear_update(session: ApplicationSession) -> tuple:
     end_time = datetime.time(date_time).strftime(r"%H:%M")
     duration = session.duration
     data = (end_time, duration, session.id)
-    # logger.info(f"prepeared data to be updated: {data}")
+    logger.debug(f"prepeared data to be updated: {data}", level="DEBUG")
     return data
 
 
@@ -172,7 +162,7 @@ def main():
                 update_values(update_data)
                 strikes = 0
         except psutil.NoSuchProcess as e:
-            logger.debug(f"Process not found: {e}", level="ERROR")
+            logger.warning(f"Process not found: {e}")
             current_session = ApplicationSession(handle=hwnd)
             next_session = ApplicationSession(handle=0)
 
